@@ -1,22 +1,28 @@
-FROM alpine:3.13 AS build
+ARG CC65_VERSION=2.19
+ARG CC65_ROOT=/opt/cc65
 
-RUN apk add --update --no-cache gcc make musl-dev unzip wget
+FROM alpine:latest AS build
+
+ARG CC65_VERSION
+ARG CC65_ROOT
+
+RUN apk add --update --no-cache gcc make musl-dev
 
 WORKDIR /usr/src
-
-ARG CC65_VERSION=2.19
 
 RUN wget https://github.com/cc65/cc65/archive/V${CC65_VERSION}.zip -O cc65-${CC65_VERSION}.zip \
   && unzip cc65-${CC65_VERSION}.zip \
   && cd cc65-${CC65_VERSION} \
-  && PREFIX=/opt/cc65 make \
-  && PREFIX=/opt/cc65 make install \
-  && find /opt/cc65/bin -type f -exec strip {} \;
+  && make PREFIX=$CC65_ROOT LDFLAGS="-s" \
+  && make PREFIX=$CC65_ROOT install
 
-FROM alpine:3.13
+FROM alpine:latest
+
+ARG CC65_ROOT
 
 RUN apk add --update --no-cache make
 
-COPY --from=build /opt/cc65 /opt/cc65
-ENV PATH /opt/cc65/bin:$PATH
+COPY --from=build $CC65_ROOT $CC65_ROOT
+
+ENV PATH $CC65_ROOT/bin:$PATH
 WORKDIR /workdir
